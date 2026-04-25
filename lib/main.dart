@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
-import 'dart:convert';
-import 'package:crypto/crypto.dart';
-import 'safety_timer.dart';
+import 'package:flutter/services.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'screens/safety_timer.dart';
+import 'screens/evidence_locker.dart';
+import 'screens/incident_journal.dart';
 
 void main() {
   runApp(const RepShieldApp());
@@ -30,11 +33,55 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   bool isStealth = false;
 
+  // ✅ GET LOCATION
+  Future<Position> _getLocation() async {
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      return Future.error('Location services are disabled.');
+    }
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+    return await Geolocator.getCurrentPosition();
+  }
+
+  // ✅ SEND SOS SMS
+  Future<void> _sendSOS() async {
+    try {
+      final position = await _getLocation();
+      String message =
+          "🚨 EMERGENCY! I need help immediately!\nMy location: https://maps.google.com/?q=${position.latitude},${position.longitude}";
+      final Uri smsUri = Uri.parse(
+          "sms:+916370740383?body=${Uri.encodeComponent(message)}");
+      if (await canLaunchUrl(smsUri)) {
+        await launchUrl(smsUri);
+      }
+    } catch (e) {
+      // If location fails, send SOS without location
+      final Uri smsUri = Uri.parse(
+          "sms:+916370740383?body=${Uri.encodeComponent('🚨 EMERGENCY! I need help immediately!')}");
+      if (await canLaunchUrl(smsUri)) {
+        await launchUrl(smsUri);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (isStealth) {
+      SystemChrome.setEnabledSystemUIMode(
+        SystemUiMode.manual,
+        overlays: [],
+      );
       return GestureDetector(
-        onLongPress: () => setState(() => isStealth = false),
+        onLongPress: () {
+          SystemChrome.setEnabledSystemUIMode(
+            SystemUiMode.manual,
+            overlays: SystemUiOverlay.values,
+          );
+          setState(() => isStealth = false);
+        },
         child: const Scaffold(backgroundColor: Colors.black),
       );
     }
@@ -46,29 +93,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                "REPSHIELD",
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 2,
-                ),
-              ),
+              const Text("REPSHIELD",
+                  style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 2)),
               const SizedBox(height: 10),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 12, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.white10,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Text(
-                  "● SYSTEM ARMED",
-                  style: TextStyle(
-                    color: Color(0xFF00FF94),
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                    color: Colors.white10,
+                    borderRadius: BorderRadius.circular(20)),
+                child: const Text("● SYSTEM ARMED",
+                    style: TextStyle(
+                        color: Color(0xFF00FF94),
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold)),
               ),
               const SizedBox(height: 30),
               Expanded(
@@ -77,43 +118,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   crossAxisSpacing: 15,
                   mainAxisSpacing: 15,
                   children: [
-                    _buildCard(
-                      context,
-                      "Journal",
-                      Icons.book,
-                      const Color(0xFF1A1A1B),
-                      () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const IncidentJournalPage(),
-                        ),
-                      ),
-                    ),
-                    _buildCard(
-                      context,
-                      "Vault",
-                      Icons.lock,
-                      const Color(0xFF0D2B1D),
-                      () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const EvidenceLockerPage(),
-                        ),
-                      ),
-                    ),
+                    _buildCard(context, "Journal", Icons.book,
+                        const Color(0xFF1A1A1B), () {
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) =>
+                                  IncidentJournalPage()));
+                    }),
+                    _buildCard(context, "Vault", Icons.lock,
+                        const Color(0xFF0D2B1D), () {
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) =>
+                                  EvidenceLockerPage()));
+                    }),
                     _buildStealthCard(),
-                    _buildCard(
-                      context,
-                      "Timer",
-                      Icons.timer,
-                      const Color(0xFF2E1A1A),
-                      () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const SafetyTimerPage(),
-                        ),
-                      ),
-                    ),
+                    _buildCard(context, "Timer", Icons.timer,
+                        const Color(0xFF2E1A1A), () {
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) =>
+                                  SafetyTimerPage()));
+                    }),
                   ],
                 ),
               ),
@@ -132,16 +161,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white10),
-        ),
+            color: color,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.white10)),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: Colors.white, size: 30),
-            const SizedBox(height: 10),
-            Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+            Icon(icon, color: Colors.white, size: 24),
+            const SizedBox(height: 6),
+            Text(title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold, fontSize: 12)),
           ],
         ),
       ),
@@ -153,16 +184,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
       onTap: () => setState(() => isStealth = true),
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF161618),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0xFF00F2FF)),
-        ),
+            color: const Color(0xFF161618),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFF00F2FF))),
         child: const Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.visibility_off, color: Color(0xFF00F2FF), size: 30),
-            SizedBox(height: 10),
-            Text("Stealth Mode", style: TextStyle(fontWeight: FontWeight.bold)),
+            Icon(Icons.visibility_off,
+                color: Color(0xFF00F2FF), size: 24),
+            SizedBox(height: 6),
+            Text("Stealth Mode",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    fontWeight: FontWeight.bold, fontSize: 12)),
           ],
         ),
       ),
@@ -171,171 +205,40 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildSOSButton() {
     return GestureDetector(
-      onLongPress: () {
+      onLongPress: () async {
+        // Show loading dialog
         showDialog(
           context: context,
-          builder: (context) => AlertDialog(
-            backgroundColor: Colors.red,
-            title: const Text(
-              "SOS ACTIVATED",
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          barrierDismissible: false,
+          builder: (context) => const AlertDialog(
+            backgroundColor: Color(0xFF1A1A1A),
+            content: Row(
+              children: [
+                CircularProgressIndicator(color: Colors.red),
+                SizedBox(width: 20),
+                Text("Getting location...",
+                    style: TextStyle(color: Colors.white)),
+              ],
             ),
-            content: const Text(
-              "GPS tracking enabled. Contacts notified.",
-              style: TextStyle(color: Colors.white),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text("OK", style: TextStyle(color: Colors.white)),
-              ),
-            ],
           ),
         );
+        // Send SOS
+        await _sendSOS();
+        // Close dialog
+        if (context.mounted) Navigator.pop(context);
       },
       child: Container(
         width: double.infinity,
         height: 80,
         decoration: BoxDecoration(
-          color: Colors.redAccent,
-          borderRadius: BorderRadius.circular(25),
-        ),
+            color: Colors.redAccent,
+            borderRadius: BorderRadius.circular(25)),
         child: const Center(
-          child: Text(
-            "S O S",
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w900,
-              color: Colors.white,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class IncidentJournalPage extends StatefulWidget {
-  const IncidentJournalPage({super.key});
-  @override
-  State<IncidentJournalPage> createState() => _IncidentJournalPageState();
-}
-
-class _IncidentJournalPageState extends State<IncidentJournalPage> {
-  final TextEditingController _controller = TextEditingController();
-  String forensicHash = "";
-
-  void _generateSeal() {
-    if (_controller.text.isEmpty) return;
-    var bytes = utf8.encode(_controller.text + DateTime.now().toString());
-    var digest = sha256.convert(bytes);
-    setState(() {
-      forensicHash = digest.toString();
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0B),
-      appBar: AppBar(
-        title: const Text("FORENSIC JOURNAL"),
-        backgroundColor: Colors.transparent,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          children: [
-            TextField(
-              controller: _controller,
-              maxLines: 5,
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                hintText: "Describe the incident...",
-                hintStyle: const TextStyle(color: Colors.white24),
-                filled: true,
-                fillColor: Colors.white10,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(15),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _generateSeal,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF00F2FF),
-              ),
-              child: const Text(
-                "SEAL EVIDENCE",
-                style: TextStyle(
-                  color: Colors.black,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            if (forensicHash.isNotEmpty) ...[
-              const SizedBox(height: 30),
-              const Text(
-                "DIGITAL SEAL (SHA-256):",
-                style: TextStyle(color: Color(0xFF00FF94), fontSize: 12),
-              ),
-              SelectableText(
-                forensicHash,
-                style: const TextStyle(
-                  color: Colors.white54,
-                  fontSize: 10,
-                  fontFamily: 'monospace',
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class EvidenceLockerPage extends StatelessWidget {
-  const EvidenceLockerPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0B),
-      appBar: AppBar(
-        title: const Text("EVIDENCE LOCKER"),
-        backgroundColor: Colors.transparent,
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          _vaultItem("AUDIO_REC_001.mp4", "March 27, 2026", "SECURE"),
-          _vaultItem("JOURNAL_ENTRY_04.pdf", "March 26, 2026", "HASHED"),
-          _vaultItem("IMG_THREAT_DET.jpg", "March 25, 2026", "ENCRYPTED"),
-        ],
-      ),
-    );
-  }
-
-  Widget _vaultItem(String name, String date, String status) {
-    return Card(
-      color: Colors.white10,
-      margin: const EdgeInsets.only(bottom: 15),
-      child: ListTile(
-        leading: const Icon(Icons.insert_drive_file, color: Color(0xFF00FF94)),
-        title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text(date),
-        trailing: Container(
-          padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(
-            color: Colors.green.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(
-            status,
-            style: const TextStyle(color: Colors.green, fontSize: 10),
-          ),
+          child: Text("S O S",
+              style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.white)),
         ),
       ),
     );
