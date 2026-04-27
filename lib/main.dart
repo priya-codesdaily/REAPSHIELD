@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:sensors_plus/sensors_plus.dart';
+import 'dart:math';
 import 'screens/safety_timer.dart';
 import 'screens/evidence_locker.dart';
 import 'screens/incident_journal.dart';
@@ -32,6 +34,41 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   bool isStealth = false;
+  bool _sosTriggered = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _listenForShake();
+  }
+
+  void _listenForShake() {
+    accelerometerEventStream().listen((AccelerometerEvent event) {
+      double magnitude = sqrt(
+        event.x * event.x +
+        event.y * event.y +
+        event.z * event.z
+      );
+      if (magnitude > 25 && !_sosTriggered) {
+        _sosTriggered = true;
+        // Show snackbar so user knows shake was detected
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("🚨 Shake detected! Sending SOS..."),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+        _sendSOS();
+        // Reset after 10 seconds
+        Future.delayed(const Duration(seconds: 10), () {
+          if (mounted) setState(() => _sosTriggered = false);
+        });
+      }
+    });
+  }
 
   // ✅ GET LOCATION
   Future<Position> _getLocation() async {
@@ -43,7 +80,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
     }
-    return await Geolocator.getCurrentPosition();
+    return await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.high,
+    );
   }
 
   // ✅ SEND SOS SMS
@@ -58,7 +97,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         await launchUrl(smsUri);
       }
     } catch (e) {
-      // If location fails, send SOS without location
       final Uri smsUri = Uri.parse(
           "sms:+916370740383?body=${Uri.encodeComponent('🚨 EMERGENCY! I need help immediately!')}");
       if (await canLaunchUrl(smsUri)) {
@@ -111,6 +149,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         fontSize: 12,
                         fontWeight: FontWeight.bold)),
               ),
+              const SizedBox(height: 8),
+              // Shake hint
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 12, vertical: 4),
+                decoration: BoxDecoration(
+                    color: Colors.white10,
+                    borderRadius: BorderRadius.circular(20)),
+                child: const Text("📳 Shake phone to trigger SOS",
+                    style: TextStyle(
+                        color: Color(0xFFFFD700),
+                        fontSize: 11)),
+              ),
               const SizedBox(height: 30),
               Expanded(
                 child: GridView.count(
@@ -120,28 +171,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   children: [
                     _buildCard(context, "Journal", Icons.book,
                         const Color(0xFF1A1A1B), () {
-                      Navigator.push(
-                          context,
+                      Navigator.push(context,
                           MaterialPageRoute(
-                              builder: (_) =>
-                                  IncidentJournalPage()));
+                              builder: (_) => IncidentJournalPage()));
                     }),
                     _buildCard(context, "Vault", Icons.lock,
                         const Color(0xFF0D2B1D), () {
-                      Navigator.push(
-                          context,
+                      Navigator.push(context,
                           MaterialPageRoute(
-                              builder: (_) =>
-                                  EvidenceLockerPage()));
+                              builder: (_) => EvidenceLockerPage()));
                     }),
                     _buildStealthCard(),
                     _buildCard(context, "Timer", Icons.timer,
                         const Color(0xFF2E1A1A), () {
-                      Navigator.push(
-                          context,
+                      Navigator.push(context,
                           MaterialPageRoute(
-                              builder: (_) =>
-                                  SafetyTimerPage()));
+                              builder: (_) => SafetyTimerPage()));
                     }),
                   ],
                 ),
@@ -206,7 +251,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildSOSButton() {
     return GestureDetector(
       onLongPress: () async {
-        // Show loading dialog
         showDialog(
           context: context,
           barrierDismissible: false,
@@ -222,9 +266,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
         );
-        // Send SOS
         await _sendSOS();
-        // Close dialog
         if (context.mounted) Navigator.pop(context);
       },
       child: Container(
