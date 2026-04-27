@@ -3,11 +3,14 @@ import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:sensors_plus/sensors_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:math';
 import 'screens/safety_timer.dart';
 import 'screens/evidence_locker.dart';
 import 'screens/incident_journal.dart';
-
+import 'screens/trusted_contacts.dart';
+@pragma('vm:keep')
+Future<void> _firebaseMessagingBackgroundHandler(dynamic message) async {}
 void main() {
   runApp(const RepShieldApp());
 }
@@ -35,23 +38,33 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   bool isStealth = false;
   bool _sosTriggered = false;
+  List<String> _contactPhones = [];
 
   @override
   void initState() {
     super.initState();
+    _loadContacts();
     _listenForShake();
   }
 
+  // Load trusted contacts
+  Future<void> _loadContacts() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _contactPhones = prefs.getStringList('contact_phones') ?? ['+916370740383'];
+    });
+  }
+
+  // Shake detection
   void _listenForShake() {
     accelerometerEventStream().listen((AccelerometerEvent event) {
       double magnitude = sqrt(
         event.x * event.x +
         event.y * event.y +
-        event.z * event.z
+        event.z * event.z,
       );
-      if (magnitude > 25 && !_sosTriggered) {
+      if (magnitude > 20 && !_sosTriggered) {
         _sosTriggered = true;
-        // Show snackbar so user knows shake was detected
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -62,7 +75,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           );
         }
         _sendSOS();
-        // Reset after 10 seconds
         Future.delayed(const Duration(seconds: 10), () {
           if (mounted) setState(() => _sosTriggered = false);
         });
@@ -70,12 +82,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     });
   }
 
-  // ✅ GET LOCATION
+  // Get location
   Future<Position> _getLocation() async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      return Future.error('Location services are disabled.');
-    }
+    if (!serviceEnabled) return Future.error('Location disabled');
     LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
@@ -85,20 +95,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // ✅ SEND SOS SMS
+  // Send SOS to ALL trusted contacts
   Future<void> _sendSOS() async {
+    await _loadContacts();
+    String message;
     try {
       final position = await _getLocation();
-      String message =
+      message =
           "🚨 EMERGENCY! I need help immediately!\nMy location: https://maps.google.com/?q=${position.latitude},${position.longitude}";
-      final Uri smsUri = Uri.parse(
-          "sms:+916370740383?body=${Uri.encodeComponent(message)}");
-      if (await canLaunchUrl(smsUri)) {
-        await launchUrl(smsUri);
-      }
     } catch (e) {
+      message = "🚨 EMERGENCY! I need help immediately!";
+    }
+
+    // Send to all contacts one by one
+    for (String phone in _contactPhones) {
       final Uri smsUri = Uri.parse(
-          "sms:+916370740383?body=${Uri.encodeComponent('🚨 EMERGENCY! I need help immediately!')}");
+          "sms:$phone?body=${Uri.encodeComponent(message)}");
       if (await canLaunchUrl(smsUri)) {
         await launchUrl(smsUri);
       }
@@ -150,7 +162,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         fontWeight: FontWeight.bold)),
               ),
               const SizedBox(height: 8),
-              // Shake hint
               Container(
                 padding: const EdgeInsets.symmetric(
                     horizontal: 12, vertical: 4),
@@ -187,6 +198,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       Navigator.push(context,
                           MaterialPageRoute(
                               builder: (_) => SafetyTimerPage()));
+                    }),
+                    _buildCard(context, "Contacts", Icons.people,
+                        const Color(0xFF1A1A2E), () {
+                      Navigator.push(context,
+                          MaterialPageRoute(
+                              builder: (_) => const TrustedContactsPage()),
+                      ).then((_) => _loadContacts());
                     }),
                   ],
                 ),
@@ -260,7 +278,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               children: [
                 CircularProgressIndicator(color: Colors.red),
                 SizedBox(width: 20),
-                Text("Getting location...",
+                Text("Sending SOS to all contacts...",
                     style: TextStyle(color: Colors.white)),
               ],
             ),
