@@ -76,13 +76,12 @@ lib/
 
 ## 🔮 Upcoming Features (v2)
 
-- [ ] Trusted contacts manager (multi-contact SOS)
-- [ ] Shake-to-SOS trigger
+- [x] Trusted contacts manager ✅ DONE
+- [x] Shake-to-SOS trigger ✅ DONE
 - [ ] PIN / biometric vault lock
 - [ ] Fake incoming call screen
 - [ ] Cloud backup via Firebase
 - [ ] Auto SMS without user interaction
-
 ---
 
 ## 👩‍💻 Developer
