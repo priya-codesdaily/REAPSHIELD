@@ -1,95 +1,135 @@
 ﻿# 🔐 REPSHIELD
-### Personal Safety App — Built with Flutter
+### Personal Safety Application — Flutter
 
 ![Status](https://img.shields.io/badge/Status-Active-brightgreen)
 ![Flutter](https://img.shields.io/badge/Flutter-3.x-blue)
 ![Platform](https://img.shields.io/badge/Platform-Android-green)
-![Developer](https://img.shields.io/badge/Dev-Priya-purple)
+![License](https://img.shields.io/badge/License-MIT-yellow)
 
-> A real-time personal safety application designed to protect users in emergency situations through quick alerts, secure evidence storage, and stealth operation.
+> Built for women and vulnerable individuals who need safety tools that work in real emergencies — not just on paper.
 
 ---
 
-## 📱 Screenshots
+## 🎯 The Problem
 
-| Dashboard | Evidence Vault | Safety Timer |
-|-----------|---------------|--------------|
-| ![Dashboard](assets/screenshots/dashboard.jpeg) | ![Vault](assets/screenshots/evidence.jpeg) | ![Timer](assets/screenshots/timer.jpeg) |
+In India, 1 woman is assaulted every 15 minutes. Most safety apps require unlocking the phone, opening the app, and pressing a button. In a real emergency — that's 3 steps too many.
+
+REPSHIELD reduces that to **one shake.**
+
+---
+
+## 📱 Demo
+
+| Home Screen | SOS Active | Trusted Contacts |
+|-------------|------------|-----------------|
+| ![Home](assets/screenshots/dashboard.jpeg) | ![SOS](assets/screenshots/stoptimer.jpeg) | ![Contacts](assets/screenshots/timer.jpeg) |
 
 ---
 
 ## 🚀 Features
 
-| Feature | Description |
-|--------|-------------|
-| 🔴 SOS Alert | Long press to send GPS location via SMS instantly |
-| 📓 Incident Journal | Log and seal incidents with hash-based evidence |
-| 🔐 Evidence Locker | Secure storage for files and sensitive media |
-| 👁 Stealth Mode | Hides app as blank screen, exit with long press |
-| ⏱ Safety Timer | Auto-triggers alert if user doesn't check in |
+| Feature | Description | Technology |
+|---------|-------------|------------|
+| 🔴 Shake-to-SOS | Shake phone → GPS location sent via SMS | sensors_plus, Geolocator |
+| 📍 Live GPS SOS | Real-time coordinates in Google Maps link | Geolocator |
+| 👥 Trusted Contacts | Add multiple contacts — all receive SOS | shared_preferences |
+| 👁️ Stealth Mode | App becomes blank screen instantly | SystemChrome |
+| 📓 Incident Journal | Log incidents with SHA-256 evidence sealing | crypto |
+| ⏱️ Safety Timer | Auto-trigger if user doesn't check in | Timer |
+| 🔐 Evidence Locker | Secure vault for sensitive files | Local storage |
 
 ---
 
 ## 🛠 Tech Stack
 
-- **Framework:** Flutter (Dart)
-- **Location:** Geolocator package
-- **Communication:** URL Launcher (SMS)
-- **UI:** Custom dark theme with Material Design
-- **Build:** Android (Gradle + NDK)
+\\\
+Frontend:     Flutter (Dart)
+Location:     Geolocator package
+Sensors:      sensors_plus (accelerometer)
+Storage:      shared_preferences
+SMS:          url_launcher
+Platform:     Android (tested on real device)
+\\\
 
 ---
 
 ## 📲 Installation
 
 \\\ash
-git clone https://github.com/priya-codesdaily/REAPSHIELD.git
-cd REAPSHIELD
+git clone https://github.com/priya-codesdaily/REPSHIELD.git
+cd REPSHIELD
 flutter pub get
 flutter run
 \\\
 
----
-
-## 🔥 How SOS Works
-
-1. User long-presses the SOS button
-2. App fetches real-time GPS coordinates
-3. Builds a Google Maps link with exact location
-4. Opens SMS app with pre-filled emergency message
-5. Falls back to locationless SOS if GPS unavailable
+Or download the APK directly:
+👉 [Download REPSHIELD v1.0.0](https://github.com/priya-codesdaily/REPSHIELD/releases/tag/v1.0.0)
 
 ---
 
-## 🧠 Architecture
+## 🔥 How Shake-to-SOS Works
+
+\\\dart
+// Accelerometer detects shake magnitude
+accelerometerEventStream().listen((event) {
+  double magnitude = sqrt(
+    event.x² + event.y² + event.z²
+  );
+  if (magnitude > 20) {
+    // Fetch GPS → Build Maps URL → Send SMS
+    sendSOS();
+  }
+});
+\\\
+
+---
+
+## 🏗️ Architecture
 
 \\\
 lib/
-├── main.dart              # App entry + Dashboard
+├── main.dart                    # App entry + Dashboard
 └── screens/
-    ├── evidence_locker.dart   # Vault screen
-    ├── incident_journal.dart  # Journal screen
-    └── safety_timer.dart      # Timer screen
+    ├── evidence_locker.dart     # Secure vault
+    ├── incident_journal.dart    # Evidence logging
+    ├── safety_timer.dart        # Auto-trigger timer
+    └── trusted_contacts.dart   # Contact manager
 \\\
 
 ---
 
-## 🔮 Upcoming Features (v2)
+## 🔮 Roadmap (v2)
 
-- [x] Trusted contacts manager ✅ DONE
-- [x] Shake-to-SOS trigger ✅ DONE
+- [ ] Voice safe word trigger ("Lotus" → silent SOS)
 - [ ] PIN / biometric vault lock
 - [ ] Fake incoming call screen
-- [ ] Cloud backup via Firebase
 - [ ] Auto SMS without user interaction
+- [ ] Firebase cloud backup
+- [ ] Sign language support for deaf users
+
+---
+
+## 📊 Impact
+
+\\\
+Target users:     Women + vulnerable individuals
+SOS trigger:      1 shake (no unlock needed)
+Location method:  Real-time GPS coordinates
+Data privacy:     All data stays on device
+\\\
+
 ---
 
 ## 👩‍💻 Developer
 
-**Priya** — BCA Student | Flutter Developer
+**Anshu Priya** — Self-taught Flutter Developer | BCA Student | Age 20
 
+> "I built REPSHIELD because safety should not require 3 steps. One shake should be enough."
+
+[![Portfolio](https://img.shields.io/badge/Portfolio-priya--codesdaily.github.io-blue)](https://priya-codesdaily.github.io)
 [![GitHub](https://img.shields.io/badge/GitHub-priya--codesdaily-black?logo=github)](https://github.com/priya-codesdaily)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-a--priya--dev-blue?logo=linkedin)](https://linkedin.com/in/a-priya-dev)
 
 ---
 
-> 💡 *REPSHIELD was built to solve a real problem. Every feature exists for a reason.*
+> 💡 *Every feature in REPSHIELD exists because a real person needed it.*
